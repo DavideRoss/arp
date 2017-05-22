@@ -1,45 +1,65 @@
-#define C 0
-#define C_SHARP 1
-#define D 2
-#define D_SHARP 3
-#define E 4
-#define F 5
-#define F_SHARP 6
-#define G 7
-#define G_SHARP 8
-#define A 9
-#define A_SHARP 10
-#define B 11
+#define NOTE_C 0
+#define NOTE_C_SHARP 1
+#define NOTE_D 2
+#define NOTE_D_SHARP 3
+#define NOTE_E 4
+#define NOTE_F 5
+#define NOTE_F_SHARP 6
+#define NOTE_G 7
+#define NOTE_G_SHARP 8
+#define NOTE_A 9
+#define NOTE_A_SHARP 10
+#define NOTE_B 11
 
-int octave = 5;
-int baseNote = 0;
+String notes[] = {
+    "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+};
 
-int note = 60;
+int scales[1][7] = {
+    { 0, 2, 3, 5, 7, 8, 10 } // aeolian
+};
 
-int getNote() {
-    note = (octave * 12) + baseNote;
+int scale = 0;
+int scaleLen = sizeof(scales[scale]) / sizeof(int);
 
-    if (note > 127) {
-        note = 127
+int currentNote = 60;
+int start = 60;
+int counter = 0;
+int incIndex = 0;
+int inc = 1;
+int steps = 4;
+
+void midi_setup() {
+
+}
+
+void midi_loop() {
+    send_midi();
+    calculate_next();
+
+    delay(200);
+}
+
+void send_midi() {
+    int noteIndex = currentNote % 12;
+    int octave = (currentNote / 12) - 1;
+
+    Serial.print(notes[noteIndex]);
+    Serial.print(octave);
+    Serial.print(' - ');
+    Serial.println(currentNote);
+}
+
+void calculate_next() {
+    counter++;
+    incIndex += inc;
+
+    if (counter == steps) {
+        counter = 0;
+        incIndex = 0;
+        currentNote = start;
     }
 
-    return note;
-}
-
-void setBaseNote(note) {
-    baseNote = note;
-
-    if (baseNote > 11) baseNote = 11;
-    if (baseNote < 0) baseNote = 0;
-
-    getNote();
-}
-
-void setOctave(inputOctave) {
-    octave = inputOctave;
-
-    if (octave > 10) octave = 10;
-    if (octave < 0) octave = 0;
-
-    getNote();
+    int trueInc = scales[scale][incIndex % scaleLen];
+    currentNote += trueInc;
 }

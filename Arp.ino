@@ -1,9 +1,11 @@
 void setup() {
     controls_setup();
+    midi_setup();
 }
 
 void loop() {
     controls_loop();
+    midi_loop();
 }
 
 /*
