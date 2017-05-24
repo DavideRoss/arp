@@ -1,27 +1,42 @@
-#define POT_1 18
-#define POT_2 19
-#define POT_3 20
-#define POT_4 21
+#define ENC1 2
+#define ENC2 3
 
-#define SHIFT 10
+#define SHIFT 16
 
-int pots[] = {0, 0, 0, 0};
+volatile int lastEncoded = 0;
+volatile long encoderValue = 0;
+
+long lastEncoderValue = 0;
+
 int shiftState = LOW;
+int lastShiftState = LOW;
 
 void controls_setup() {
-    pinMode(POT_1, INPUT);
-    pinMode(POT_2, INPUT);
-    pinMode(POT_3, INPUT);
-    pinMode(POT_4, INPUT);
+    pinMode(ENC1, INPUT);
+    pinMode(ENC2, INPUT);
+    pinMode(SHIFT, INPUT_PULLUP);
 
-    pinMode(SHIFT, INPUT);
+    digitalWrite(ENC1, HIGH);
+    digitalWrite(ENC2, HIGH);
+
+    attachInterrupt(0, updateEncoder, CHANGE);
+    attachInterrupt(1, updateEncoder, CHANGE);
 }
 
 void controls_loop() {
-    pots[0] = analogRead(POT_1);
-    pots[1] = analogRead(POT_2);
-    pots[2] = analogRead(POT_3);
-    pots[3] = analogRead(POT_4);
+    lastShiftState = shiftState;
+    shiftState = !digitalRead(SHIFT);
+}
 
-    shiftState = digitalRead(SHIFT);
+void updateEncoder() {
+    int MSB = digitalRead(ENC1);
+    int LSB = digitalRead(ENC2);
+
+    int encoded = (MSB << 1) | LSB;
+    int sum = (lastEncoded << 2) | encoded;
+
+    if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) encoderValue ++;
+    if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) encoderValue --;
+ 
+    lastEncoded = encoded;
 }

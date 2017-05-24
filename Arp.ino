@@ -1,10 +1,12 @@
 void setup() {
     controls_setup();
+    screen_setup();
     midi_setup();
 }
 
 void loop() {
     controls_loop();
+    screen_loop();
     midi_loop();
 }
 

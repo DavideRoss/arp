@@ -34,10 +34,10 @@ void midi_setup() {
 }
 
 void midi_loop() {
-    send_midi();
-    calculate_next();
+    // send_midi();
+    // calculate_next();
 
-    delay(200);
+    // delay(200);
 }
 
 void send_midi() {
