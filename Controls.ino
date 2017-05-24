@@ -35,6 +35,8 @@ void updateEncoder() {
     int encoded = (MSB << 1) | LSB;
     int sum = (lastEncoded << 2) | encoded;
 
+    lastEncoderValue = encoderValue;
+
     if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) encoderValue ++;
     if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) encoderValue --;
  
