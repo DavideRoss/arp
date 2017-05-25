@@ -11,6 +11,8 @@
 #define NOTE_A_SHARP 10
 #define NOTE_B 11
 
+#define LED 14
+
 String notes[] = {
     "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
 };
@@ -54,43 +56,43 @@ int ms = 0;
 int gateMs = 0;
 int bpm = 130;
 
-volatile long delta = 0;
-volatile long deltaGate = 0;
 unsigned long lastTime = 0;
+unsigned long lastGateTime = 0;
+
+unsigned long dbgCounter = 0;
 
 bool waitForGate = false;
 
 void midi_setup() {
     calculate_ms();
+
+    pinMode(LED, OUTPUT);
 }
 
 void midi_loop() {
-    // send_midi();
-    // calculate_next();
-
-    // delay(200);
-
     int curr = millis();
-    int tick = curr - lastTime;
-    lastTime = curr;
 
-    delta += tick;
+    if (curr - lastTime > ms) {
+        lastTime = curr;
+        lastGateTime = curr;
 
-    if (delta > ms) {
-        delta -= ms;
+        Serial.print("Tick - ");
+        Serial.println(dbgCounter);
+
+        digitalWrite(LED, HIGH);
+
         waitForGate = true;
-
-        Serial.println('Tick!');
     }
 
     if (waitForGate) {
-        deltaGate += tick;
+        if (curr - lastGateTime > gateMs) {
+            Serial.print("Gate - ");
+            Serial.println(dbgCounter);
 
-        if (deltaGate > gateMs) {
-            deltaGate = 0;
+            digitalWrite(LED, LOW);
+
             waitForGate = false;
-
-            Serial.println('Gate');
+            dbgCounter++;
         }
     }
 }

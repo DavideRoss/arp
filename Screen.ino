@@ -8,7 +8,7 @@
 #define DB5 6
 #define DB4 7
 
-#define HALF 8
+#define DIVIDER 4
 
 LiquidCrystal lcd(RS, ENABLE, DB4, DB5, DB6, DB7);
 
@@ -16,9 +16,12 @@ LiquidCrystal lcd(RS, ENABLE, DB4, DB5, DB6, DB7);
 // SCALE        BPM
 byte mode = 0;
 
+int module = 0;
+int lastModule = 0;
+
 void screen_setup() {
     lcd.begin(16, 2);
-    lcd.print(">BASE   -STEPS  ");
+    draw();
 }   
 
 void screen_loop() {
@@ -29,46 +32,63 @@ void screen_loop() {
     if (lastShiftState == LOW && shiftState == HIGH) {
         mode++;
         if (mode >= 4) mode = 0;
+
+        draw();
     }
 
     // ============================================================================================
     // ===== VALUE CHANGE =========================================================================
     // ============================================================================================
 
-    int encDelta = encoderValue - lastEncoderValue;
+    int module = encoderValue / DIVIDER;
+    int encDelta = module - lastModule;
+    lastModule = module;
 
-    if (mode == 0) {
-        // Base note (0-127)
-        currentNote += encDelta;
+    if (encDelta > 1) encDelta = 1;
+    if (encDelta < -1) encDelta = -1;
 
-        if (currentNote < 0) currentNote = 0;
-        if (currentNote > 127) currentNote = 127;
-    } else if (mode == 1) {
-        // Steps (1-8)
-        steps += encDelta;
+    if (encDelta != 0) {
+        Serial.println(encDelta);
+        
+        if (mode == 0) {
+            // Base note (0-127)
+            currentNote += encDelta;
 
-        if (steps < 0) steps = 0;
-        if (steps > 8) steps = 8;
-    } else if (mode == 2) {
-        // Scale (see Midi.ino:18)
-        scale += encDelta;
+            if (currentNote < 0) currentNote = 0;
+            if (currentNote > 127) currentNote = 127;
+        } else if (mode == 1) {
+            // Steps (1-8)
+            steps += encDelta;
 
-        if (scale < 0) scale = 0;
-        if (scale > 8) scale = 8;
-    } else {
-        // BPM (60-240)
-        bpm += encDelta;
+            if (steps < 1) steps = 1;
+            if (steps > 8) steps = 8;
+        } else if (mode == 2) {
+            // Scale (see Midi.ino:18)
+            scale += encDelta;
 
-        if (bpm < 60) bpm = 60;
-        if (bpm > 240) bpm = 240;
+            if (scale < 0) scale = 0;
+            if (scale > 8) scale = 8;
+        } else {
+            // BPM (60-240)
+            bpm += encDelta;
+
+            if (bpm < 60) bpm = 60;
+            if (bpm > 240) bpm = 240;
+
+            calculate_ms();
+        }
+
+        // ============================================================================================
+        // ===== LCD DISPLAY ==========================================================================
+        // ============================================================================================
+
+        draw();
     }
 
     // TODO: recalculate scale after settings
+}
 
-    // ============================================================================================
-    // ===== LCD DISPLAY ==========================================================================
-    // ============================================================================================
-
+void draw() {
     lcd.setCursor(0, 0);
     lcd.print(get_line());
     lcd.setCursor(0, 1);
@@ -85,12 +105,6 @@ void screen_loop() {
         lcd.setCursor(8, 1);
         lcd.print(pad_left(String(bpm)));
     }
-}
-
-String pad_right(int val) {
-    char buff[HALF];
-    sprintf(buff, "%4d", val);
-    return String(buff);
 }
 
 String pad_left(String val) {
