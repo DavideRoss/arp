@@ -41,8 +41,12 @@ int scales[9][7] = {
     { 0, 2, 3, 5, 7, 8, 11 } // harmonic
 };
 
-int scale = 0;
+int scale = 0;                                          // Scale index
 int scaleLen = sizeof(scales[scale]) / sizeof(int);
+
+int rate = 0;
+String rateNames[] = { "1/1", "1/2", "1/3", "1/4", "1/6", "1/8", "1/12", "1/16" };
+int rateDividers[] = { 1, 2, 3, 4, 6, 8, 12, 16 };
 
 int currentNote = 60;
 int start = 60;
@@ -122,6 +126,10 @@ void calculate_next() {
 }
 
 void calculate_ms() {
-    ms = 60000 / bpm;
+    ms = (60000 / bpm) / rateDividers[rate];
+    calculate_gate();
+}
+
+void calculate_gate() {
     gateMs = ms * gate;
 }
