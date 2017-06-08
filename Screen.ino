@@ -14,6 +14,7 @@ LiquidCrystal lcd(RS, ENABLE, DB4, DB5, DB6, DB7);
 
 // BASE         STEPS
 // SCALE        BPM
+// RATE         GATE
 byte mode = 0;
 
 int module = 0;
@@ -31,7 +32,7 @@ void screen_loop() {
 
     if (lastShiftState == LOW && shiftState == HIGH) {
         mode++;
-        if (mode >= 4) mode = 0;
+        if (mode >= 6) mode = 0;
 
         draw();
     }
@@ -68,7 +69,7 @@ void screen_loop() {
 
             if (scale < 0) scale = 0;
             if (scale > 8) scale = 8;
-        } else {
+        } else if (mode == 3) {
             // BPM (60-240)
             bpm += encDelta;
 
@@ -76,16 +77,28 @@ void screen_loop() {
             if (bpm > 240) bpm = 240;
 
             calculate_ms();
-        }
+        } else if (mode == 4) {
+            // Rate (1/1-1/16)
 
-        // ============================================================================================
-        // ===== LCD DISPLAY ==========================================================================
-        // ============================================================================================
+            rate += encDelta;
+
+            if (rate < 0) rate = 0;
+            if (rate > 7) rate = 7;
+
+            calculate_ms();
+        } else if (mode == 5) {
+            // Gate (0.01 - 0.99)
+
+            gate += float(encDelta) * .01f;
+
+            if (gate < .01f) gate = .01f;
+            if (gate > 0.99f) gate = 0.99f;
+
+            calculate_gate();
+        }
 
         draw();
     }
-
-    // TODO: recalculate scale after settings
 }
 
 void draw() {
@@ -100,10 +113,14 @@ void draw() {
         lcd.print(pad_left(notes[noteIndex] + String(octave)));
         lcd.setCursor(8, 1);
         lcd.print(pad_left(String(steps)));
-    } else {
+    } else if (mode >= 2 && mode < 4) {
         lcd.print(pad_left(scaleNames[scale]));
         lcd.setCursor(8, 1);
         lcd.print(pad_left(String(bpm)));
+    } else {
+        lcd.print(pad_left(rateNames[rate]));
+        lcd.setCursor(8, 1);
+        lcd.print(pad_left(String(int(gate * 100)) + "%"));
     }
 }
 
@@ -126,11 +143,16 @@ String get_line() {
         s += "BASE   ";
         s += mode == 1? ">" : "-";
         s += "STEPS  ";
-    } else {
+    } else if (mode >= 2 && mode < 4) {
         s += mode == 2? ">" : "-";
         s += "SCALE  ";
         s += mode == 3? ">" : "-";
         s += "BPM    ";
+    } else {
+        s += mode == 4? ">" : "-";
+        s += "RATE   ";
+        s += mode == 5? ">" : "-";
+        s += "GATE   ";
     }
 
     return s;
