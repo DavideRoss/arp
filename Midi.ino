@@ -1,3 +1,5 @@
+#include "MIDIUSB.h"
+
 #define NOTE_C 0
 #define NOTE_C_SHARP 1
 #define NOTE_D 2
@@ -80,6 +82,9 @@ void midi_loop() {
         Serial.println(dbgCounter);
 
         digitalWrite(LED, HIGH);
+        midiEventPacket_t noteOn = {0x09, 0x90 | 0x01, 60, 127};
+        MidiUSB.sendMIDI(noteOn);
+        MidiUSB.flush();
 
         waitForGate = true;
     }
@@ -90,6 +95,9 @@ void midi_loop() {
             Serial.println(dbgCounter);
 
             digitalWrite(LED, LOW);
+            midiEventPacket_t noteOff = {0x08, 0x80 | 0x01, 60, 127};
+            MidiUSB.sendMIDI(noteOff);
+            MidiUSB.flush();
 
             waitForGate = false;
             dbgCounter++;
