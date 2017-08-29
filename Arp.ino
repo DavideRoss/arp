@@ -1,4 +1,6 @@
 void setup() {
+    SerialUSB.begin(9600);
+
     controls_setup();
     screen_setup();
     midi_setup();

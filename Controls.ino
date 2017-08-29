@@ -1,47 +1,52 @@
-#define ENC1 2
-#define ENC2 3
+#include <Encoder.h>
 
-#define SHIFT 16
+#define DIVIDER 4
+#define SHIFT 4
 
-volatile int lastEncoded = 0;
-volatile long encoderValue = 0;
+long realValue = -999;
+long encValue = -999;
 
-long lastEncoderValue = 0;
+bool shift = LOW;
+bool lastShift = LOW;
+bool lastRead = LOW;
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
 
-int shiftState = LOW;
-int lastShiftState = LOW;
+Encoder enc(5, 6);
 
 void controls_setup() {
-    pinMode(ENC1, INPUT);
-    pinMode(ENC2, INPUT);
-    pinMode(SHIFT, INPUT_PULLUP);
-
-    digitalWrite(ENC1, HIGH);
-    digitalWrite(ENC2, HIGH);
-
-    attachInterrupt(0, updateEncoder, CHANGE);
-    attachInterrupt(1, updateEncoder, CHANGE);
+    pinMode(SHIFT, INPUT);
 }
 
 void controls_loop() {
-    lastShiftState = shiftState;
-    shiftState = !digitalRead(SHIFT);
+    read_encoder();
+    read_shift();
 }
 
-void updateEncoder() {
-    int MSB = digitalRead(ENC1);
-    int LSB = digitalRead(ENC2);
+void read_encoder() {
+    long newVal = enc.read();
 
-    int encoded = (MSB << 1) | LSB;
-    int sum = (lastEncoded << 2) | encoded;
+    if (newVal != realValue) {
+        realValue = newVal;
+        encValue = realValue / DIVIDER;
+    }
+}
 
-    lastEncoderValue = encoderValue;
+void read_shift() {
+    // int read = digitalRead(SHIFT);
 
-    int inc = 0;
+    // if (read != lastRead) {
+    //     lastDebounceTime = millis();
+    // }
 
-    if(sum == 0b1101 || sum == 0b0100 || sum == 0b0010 || sum == 0b1011) inc ++;
-    if(sum == 0b1110 || sum == 0b0111 || sum == 0b0001 || sum == 0b1000) inc --;
- 
-    encoderValue += inc;
-    lastEncoded = encoded;
+    // if ((millis() - lastDebounceTime) > debounceDelay) {
+    //     if (read != shift) {
+    //         shift = read;
+    //     }
+    // }
+    
+    // lastRead = read;
+
+    lastShift = shift;
+    shift = digitalRead(SHIFT);
 }

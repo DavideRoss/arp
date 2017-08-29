@@ -1,159 +1,110 @@
-#include <LiquidCrystal.h>
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
-#define RS 9
-#define ENABLE 8
+#define OLED_RESET 4
+Adafruit_SSD1306 display(OLED_RESET);
 
-#define DB7 4
-#define DB6 5
-#define DB5 6
-#define DB4 7
+#define NUMFLAKES 10
+#define XPOS 0
+#define YPOS 1
+#define DELTAY 2
 
-#define DIVIDER 4
+#define LOGO16_GLCD_HEIGHT 16 
+#define LOGO16_GLCD_WIDTH  16
 
-LiquidCrystal lcd(RS, ENABLE, DB4, DB5, DB6, DB7);
-
-// BASE         STEPS
-// SCALE        BPM
-// RATE         GATE
 byte mode = 0;
+String modes[6] = {
+    "Base",
+    "Steps",
+    "Scale",
+    "BPM",
+    "Rate",
+    "Gate"
+};
 
-int module = 0;
-int lastModule = 0;
+long lastEnc = 0;
 
 void screen_setup() {
-    lcd.begin(16, 2);
-    draw();
-}   
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+}
 
 void screen_loop() {
-    // ============================================================================================
-    // ===== MODE CHANGE ==========================================================================
-    // ============================================================================================
-
-    if (lastShiftState == LOW && shiftState == HIGH) {
+    if (shift == LOW && lastShift == HIGH) {
         mode++;
-        if (mode >= 6) mode = 0;
-
-        draw();
+        if (mode > 5) mode = 0;
     }
 
-    // ============================================================================================
-    // ===== VALUE CHANGE =========================================================================
-    // ============================================================================================
+    handleEncoder();
 
-    int module = encoderValue / DIVIDER;
-    int encDelta = module - lastModule;
-    lastModule = module;
+    display.clearDisplay();
+    drawTemplate();
+    display.display();
+}
 
-    if (encDelta > 1) encDelta = 1;
-    if (encDelta < -1) encDelta = -1;
+void handleEncoder() {
+    long encDelta = encValue - lastEnc;
+    lastEnc = encValue;
 
-    if (encDelta != 0) {
-        Serial.println(encDelta);
-        
-        if (mode == 0) {
-            // Base note (0-127)
-            currentNote += encDelta;
+    if (encDelta == 0) return;
 
-            if (currentNote < 0) currentNote = 0;
-            if (currentNote > 127) currentNote = 127;
-        } else if (mode == 1) {
-            // Steps (1-8)
-            steps += encDelta;
+    if (mode == 0) {
+        start += encDelta;
 
-            if (steps < 1) steps = 1;
-            if (steps > 8) steps = 8;
-        } else if (mode == 2) {
-            // Scale (see Midi.ino:18)
-            scale += encDelta;
+        if (start < 0) start = 0;
+        if (start > 127) start = 127;
+    } else if (mode == 1) {
+        steps += encDelta;
 
-            if (scale < 0) scale = 0;
-            if (scale > 8) scale = 8;
-        } else if (mode == 3) {
-            // BPM (60-240)
-            bpm += encDelta;
+        if (steps < 1) steps = 1;
+        if (steps > 8) steps = 8;
+    } else if (mode == 2) {
+        scale += encDelta;
 
-            if (bpm < 60) bpm = 60;
-            if (bpm > 240) bpm = 240;
+        if (scale < 0) scale = 0;
+        if (scale > 8) scale = 8;
+    } else if (mode == 3) {
+        bpm += encDelta;
 
-            calculate_ms();
-        } else if (mode == 4) {
-            // Rate (1/1-1/16)
+        if (bpm < 60) bpm = 60;
+        if (bpm > 240) bpm = 240;
+    } else if (mode == 4) {
+        rate += encDelta;
+        if (rate < 0) rate = 0;
+        if (rate > 7) rate = 7;
+    } else {
+        gate += float(encDelta) * .01f;
 
-            rate += encDelta;
-
-            if (rate < 0) rate = 0;
-            if (rate > 7) rate = 7;
-
-            calculate_ms();
-        } else if (mode == 5) {
-            // Gate (0.01 - 0.99)
-
-            gate += float(encDelta) * .01f;
-
-            if (gate < .01f) gate = .01f;
-            if (gate > 0.99f) gate = 0.99f;
-
-            calculate_gate();
-        }
-
-        draw();
+        if (gate < .01f) gate = .01f;
+        if (gate > .99f) gate = .99f;
     }
 }
 
-void draw() {
-    lcd.setCursor(0, 0);
-    lcd.print(get_line());
-    lcd.setCursor(0, 1);
+void drawTemplate() {
+    display.setTextSize(2);
+    display.setTextColor(WHITE);
+    display.setCursor(0,0);
+    display.println(modes[mode]);
+
+    display.setCursor(0, 24);
+    display.setTextSize(4);
     
-    if (mode < 2) {
-        int noteIndex = currentNote % 12;
-        int octave = (currentNote / 12) - 1;
-        
-        lcd.print(pad_left(notes[noteIndex] + String(octave)));
-        lcd.setCursor(8, 1);
-        lcd.print(pad_left(String(steps)));
-    } else if (mode >= 2 && mode < 4) {
-        lcd.print(pad_left(scaleNames[scale]));
-        lcd.setCursor(8, 1);
-        lcd.print(pad_left(String(bpm)));
+    if (mode == 0) {
+        int noteIndex = start % 12;
+        int octave = (start / 12) - 1;
+
+        display.println(notes[noteIndex] + String(octave));
+    } else if (mode == 1) {
+        display.println(steps);
+    } else if (mode == 2) {
+        display.println(scaleNames[scale]);
+    } else if (mode == 3) {
+        display.println(bpm);
+    } else if (mode == 4) {
+        display.println(rateNames[rate]);
     } else {
-        lcd.print(pad_left(rateNames[rate]));
-        lcd.setCursor(8, 1);
-        lcd.print(pad_left(String(int(gate * 100)) + "%"));
+        display.println(String(int(gate * 100)) + "%");
     }
 }
 
-String pad_left(String val) {
-    int diff = 8 - val.length() + 1;
-    String s = val;
-
-    for(int i = 0; i < diff; i++) {
-        s += " ";
-    }
-
-    return s;
-}
-
-String get_line() {
-    String s = "";
-
-    if (mode < 2) {
-        s += mode == 0? ">" : "-";
-        s += "BASE   ";
-        s += mode == 1? ">" : "-";
-        s += "STEPS  ";
-    } else if (mode >= 2 && mode < 4) {
-        s += mode == 2? ">" : "-";
-        s += "SCALE  ";
-        s += mode == 3? ">" : "-";
-        s += "BPM    ";
-    } else {
-        s += mode == 4? ">" : "-";
-        s += "RATE   ";
-        s += mode == 5? ">" : "-";
-        s += "GATE   ";
-    }
-
-    return s;
-}

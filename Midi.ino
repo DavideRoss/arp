@@ -1,19 +1,19 @@
 #include "MIDIUSB.h"
 
-#define NOTE_C 0
-#define NOTE_C_SHARP 1
-#define NOTE_D 2
-#define NOTE_D_SHARP 3
-#define NOTE_E 4
-#define NOTE_F 5
-#define NOTE_F_SHARP 6
-#define NOTE_G 7
-#define NOTE_G_SHARP 8
-#define NOTE_A 9
-#define NOTE_A_SHARP 10
-#define NOTE_B 11
+// #define NOTE_C 0
+// #define NOTE_C_SHARP 1
+// #define NOTE_D 2
+// #define NOTE_D_SHARP 3
+// #define NOTE_E 4
+// #define NOTE_F 5
+// #define NOTE_F_SHARP 6
+// #define NOTE_G 7
+// #define NOTE_G_SHARP 8
+// #define NOTE_A 9
+// #define NOTE_A_SHARP 10
+// #define NOTE_B 11
 
-#define LED 14
+#define LED 13
 
 String notes[] = {
     "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
@@ -43,7 +43,7 @@ int scales[9][7] = {
     { 0, 2, 3, 5, 7, 8, 11 } // harmonic
 };
 
-int scale = 0;                                          // Scale index
+int scale = 0;
 int scaleLen = sizeof(scales[scale]) / sizeof(int);
 
 int rate = 0;
@@ -65,8 +65,6 @@ int bpm = 130;
 unsigned long lastTime = 0;
 unsigned long lastGateTime = 0;
 
-unsigned long dbgCounter = 0;
-
 bool waitForGate = false;
 
 void midi_setup() {
@@ -82,41 +80,27 @@ void midi_loop() {
         lastTime = curr;
         lastGateTime = curr;
 
-        Serial.print("Tick - ");
-        Serial.println(dbgCounter);
-
         digitalWrite(LED, HIGH);
-        midiEventPacket_t noteOn = {0x09, 0x90 | 0x01, 60, 127};
+
+        midiEventPacket_t noteOn = {0x09, 0x90 | 0x01, currentNote, 127};
         MidiUSB.sendMIDI(noteOn);
         MidiUSB.flush();
 
         waitForGate = true;
+        
     }
 
     if (waitForGate) {
         if (curr - lastGateTime > gateMs) {
-            Serial.print("Gate - ");
-            Serial.println(dbgCounter);
-
             digitalWrite(LED, LOW);
-            midiEventPacket_t noteOff = {0x08, 0x80 | 0x01, 60, 127};
+            midiEventPacket_t noteOff = {0x08, 0x80 | 0x01, currentNote, 127};
             MidiUSB.sendMIDI(noteOff);
             MidiUSB.flush();
 
             waitForGate = false;
-            dbgCounter++;
+            calculate_next();
         }
     }
-}
-
-void send_midi() {
-    int noteIndex = currentNote % 12;
-    int octave = (currentNote / 12) - 1;
-
-    Serial.print(notes[noteIndex]);
-    Serial.print(octave);
-    Serial.print(' - ');
-    Serial.println(currentNote);
 }
 
 void calculate_next() {
